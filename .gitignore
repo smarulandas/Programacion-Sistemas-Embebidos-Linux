@@ -1,0 +1,38 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# ESP-IDF / compilación
+build/
+sdkconfig.old
+managed_components/
+dependencies.lock
+
+# VS Code
+.vscode-server/
+.vscode-remote/
+
+# Bases de datos y archivos generados
+*.db
+*.sqlite
+*.sqlite3
+
+# Imágenes y logs generados en ejecución
+proyecto_final_porteria_vehicular_raspberry_esp32c6/imagenes/*
+proyecto_final_porteria_vehicular_raspberry_esp32c6/logs/*
+
+# Permitir carpetas vacías con .gitkeep
+!proyecto_final_porteria_vehicular_raspberry_esp32c6/imagenes/.gitkeep
+!proyecto_final_porteria_vehicular_raspberry_esp32c6/logs/.gitkeep
+
+# Configuración local de VS Code
+.vscode/
+proyecto_final_porteria_vehicular_raspberry_esp32c6/.vscode/
