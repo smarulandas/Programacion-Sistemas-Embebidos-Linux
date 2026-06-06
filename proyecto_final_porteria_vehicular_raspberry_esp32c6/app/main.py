@@ -6,6 +6,8 @@ from datetime import datetime
 
 import serial
 
+from camara_usb import capturar_imagen_evento
+
 
 """
 Proyecto: Sistema embebido de portería vehicular
@@ -353,6 +355,10 @@ def procesar_evento_porteria(puerto, datos):
 
     print(f"[PLACA INGRESADA] {placa}")
 
+    # Captura una imagen asociada al evento antes de validar la placa.
+    # La ruta retornada se guardará en SQLite.
+    ruta_imagen = capturar_imagen_evento(evento, placa)
+
     vehiculo = buscar_vehiculo_por_placa(placa)
 
     # Caso 1: la placa no existe o está inactiva
@@ -378,7 +384,7 @@ def procesar_evento_porteria(puerto, datos):
             contador=contador,
             origen=origen,
             detalle=detalle,
-            imagen="SIN_CAMARA",
+            imagen=ruta_imagen,
             id_persona=id_persona
         )
 
@@ -422,7 +428,7 @@ def procesar_evento_porteria(puerto, datos):
                 contador=contador,
                 origen=origen,
                 detalle=detalle,
-                imagen="SIN_CAMARA",
+                imagen=ruta_imagen,
                 id_persona=id_persona
             )
 
@@ -443,7 +449,7 @@ def procesar_evento_porteria(puerto, datos):
                 contador=contador,
                 origen=origen,
                 detalle=detalle,
-                imagen="SIN_CAMARA",
+                imagen=ruta_imagen,
                 id_persona=id_persona
             )
 
@@ -464,7 +470,7 @@ def procesar_evento_porteria(puerto, datos):
                 contador=contador,
                 origen=origen,
                 detalle=detalle,
-                imagen="SIN_CAMARA",
+                imagen=ruta_imagen,
                 id_persona=id_persona
             )
 
@@ -485,7 +491,7 @@ def procesar_evento_porteria(puerto, datos):
                 contador=contador,
                 origen=origen,
                 detalle=detalle,
-                imagen="SIN_CAMARA",
+                imagen=ruta_imagen,
                 id_persona=id_persona
             )
 
@@ -505,7 +511,7 @@ def procesar_evento_porteria(puerto, datos):
             contador=contador,
             origen=origen,
             detalle=detalle,
-            imagen="SIN_CAMARA",
+            imagen=ruta_imagen,
             id_persona=id_persona
         )
 
