@@ -70,7 +70,10 @@ def verificar_base_datos():
 def imprimir_evento(fila):
     """
     Imprime un evento con formato legible.
+
+    En el Paso 22 también muestra la imagen asociada al evento.
     """
+
     print("-" * 80)
     print(f"ID evento: {fila['id_evento']}")
     print(f"Fecha/hora: {fila['fecha_hora']}")
@@ -78,6 +81,14 @@ def imprimir_evento(fila):
     print(f"Placa: {fila['placa']}")
     print(f"Estado: {fila['estado']}")
     print(f"Detalle: {fila['detalle']}")
+
+    if "imagen" in fila.keys():
+        imagen = fila["imagen"]
+
+        if imagen is None or imagen == "" or imagen == "SIN_CAMARA":
+            print("Imagen: SIN_CAMARA")
+        else:
+            print(f"Imagen: {imagen}")
 
     if "nombre" in fila.keys() and fila["nombre"] is not None:
         print(f"Persona: {fila['nombre']}")
@@ -114,6 +125,7 @@ def consultar_ultimos_eventos():
             e.placa,
             e.estado,
             e.detalle,
+            e.imagen,
             p.nombre,
             p.documento,
             p.celular,
@@ -168,6 +180,7 @@ def consultar_eventos_por_placa():
             e.placa,
             e.estado,
             e.detalle,
+            e.imagen,
             p.nombre,
             p.documento,
             p.celular,
@@ -247,6 +260,54 @@ def consultar_vehiculos_por_estado(estado_buscado):
 
     print("-" * 80)
 
+def consultar_eventos_con_imagen():
+    """
+    Muestra únicamente eventos que tienen imagen real asociada.
+
+    Excluye:
+    - SIN_CAMARA
+    - valores vacíos
+    - valores nulos
+    """
+
+    print("\n=== Eventos con imagen asociada ===")
+
+    conexion = conectar_bd()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+        SELECT
+            e.id_evento,
+            e.fecha_hora,
+            e.evento,
+            e.placa,
+            e.estado,
+            e.detalle,
+            e.imagen,
+            p.nombre,
+            p.documento,
+            p.celular,
+            p.tipo_persona
+        FROM eventos e
+        LEFT JOIN personas p
+            ON e.id_persona = p.id_persona
+        WHERE e.imagen IS NOT NULL
+          AND e.imagen != ''
+          AND e.imagen != 'SIN_CAMARA'
+        ORDER BY e.id_evento DESC
+    """)
+
+    eventos = cursor.fetchall()
+    conexion.close()
+
+    if not eventos:
+        print("[INFO] No hay eventos con imagen asociada.")
+        return
+
+    for evento in eventos:
+        imprimir_evento(evento)
+
+    print("-" * 80)
 
 def consultar_alertas():
     """
@@ -265,6 +326,7 @@ def consultar_alertas():
             e.placa,
             e.estado,
             e.detalle,
+            e.imagen,
             p.nombre,
             p.documento,
             p.celular,
@@ -330,6 +392,15 @@ def mostrar_resumen_general():
     """)
     total_alertas = cursor.fetchone()["total"]
 
+    cursor.execute("""
+        SELECT COUNT(*) AS total
+        FROM eventos
+        WHERE imagen IS NOT NULL
+          AND imagen != ''
+          AND imagen != 'SIN_CAMARA'
+    """)
+    total_eventos_con_imagen = cursor.fetchone()["total"]
+
     conexion.close()
 
     print("-" * 80)
@@ -339,6 +410,7 @@ def mostrar_resumen_general():
     print(f"Vehículos DENTRO: {total_dentro}")
     print(f"Vehículos FUERA: {total_fuera}")
     print(f"Alertas / eventos no autorizados: {total_alertas}")
+    print(f"Eventos con imagen asociada: {total_eventos_con_imagen}")
     print("-" * 80)
 
 
@@ -354,8 +426,9 @@ def mostrar_menu():
     print("3. Ver vehículos actualmente DENTRO")
     print("4. Ver vehículos actualmente FUERA")
     print("5. Ver alertas registradas")
-    print("6. Ver resumen general")
-    print("7. Salir")
+    print("6. Ver eventos con imagen asociada")
+    print("7. Ver resumen general")
+    print("8. Salir")
     print("=" * 80)
 
 
@@ -387,9 +460,12 @@ def main():
             consultar_alertas()
 
         elif opcion == "6":
-            mostrar_resumen_general()
+            consultar_eventos_con_imagen()
 
         elif opcion == "7":
+            mostrar_resumen_general()
+
+        elif opcion == "8":
             print("[INFO] Saliendo de consulta de historial.")
             break
 

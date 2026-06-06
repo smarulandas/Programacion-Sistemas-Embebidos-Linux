@@ -351,13 +351,14 @@ def procesar_evento_porteria(puerto, datos):
         f"contador={contador}"
     )
 
+    # Captura la imagen inmediatamente cuando llega el evento del ESP32-C6.
+    # En este momento todavía no conocemos la placa, por eso usamos PENDIENTE.
+    ruta_imagen = capturar_imagen_evento(evento, "PENDIENTE")
+
+    # Luego se solicita la placa manualmente.
     placa = solicitar_placa_manual(evento)
 
     print(f"[PLACA INGRESADA] {placa}")
-
-    # Captura una imagen asociada al evento antes de validar la placa.
-    # La ruta retornada se guardará en SQLite.
-    ruta_imagen = capturar_imagen_evento(evento, placa)
 
     vehiculo = buscar_vehiculo_por_placa(placa)
 
