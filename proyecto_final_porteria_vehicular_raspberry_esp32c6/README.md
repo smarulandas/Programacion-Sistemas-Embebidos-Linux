@@ -45,6 +45,12 @@ El sistema permite registrar personas, asociarlas a vehículos, validar placas, 
 * Consulta de eventos con imagen asociada.
 * Menú principal unificado.
 
+- Reconocimiento automático de placas desde imagen capturada.
+- Detección de placa usando modelo YOLO.
+- Lectura OCR de placa usando EasyOCR.
+- Limpieza del texto detectado para comparación con SQLite.
+- Respaldo manual si la placa no se detecta automáticamente.
+
 ## Estructura general del proyecto
 
 ```text
@@ -406,18 +412,20 @@ Raspberry Pi recibe el evento
 ↓
 Raspberry Pi captura imagen automáticamente
 ↓
-Raspberry Pi solicita placa manualmente
+Raspberry Pi intenta detectar y leer la placa automáticamente
 ↓
-Raspberry Pi valida la placa en SQLite
+Si detecta placa:
+    usa la placa automática
+Si no detecta placa:
+    solicita ingreso manual
 ↓
-Raspberry Pi revisa estado DENTRO/FUERA
+Raspberry Pi valida la placa final en SQLite
 ↓
-Raspberry Pi guarda evento e imagen en SQLite
+Raspberry Pi guarda evento e imagen
 ↓
 Raspberry Pi responde al ESP32-C6
 ↓
-ESP32-C6 muestra estado con LED RGB
-```
+ESP32-C6 muestra el estado con LED RGB
 
 ## Lógica DENTRO/FUERA
 
@@ -465,14 +473,14 @@ Placa no existe o está inactiva
 Último paso completado:
 
 ```text
-Paso 22: Historial actualizado con imágenes asociadas a eventos
+Paso 24: Reconocimiento automático de placas integrado al flujo principal
 ```
 
 Funcionalidades completadas hasta este punto:
 
 * Comunicación ESP32-C6 ↔ Raspberry Pi.
 * Botones físicos de ENTRADA y SALIDA.
-* LED RGB como indicador.
+* LED RGB como indicador. 
 * Base de datos SQLite.
 * Registro de personas.
 * Registro de vehículos.
@@ -484,13 +492,11 @@ Funcionalidades completadas hasta este punto:
 * Consulta de historial con imágenes.
 * Menú principal unificado.
 
+
 ## Próximo desarrollo
 
 ```text
-Paso 23: Prueba aislada de reconocimiento de placas
-```
-
-El objetivo del siguiente paso será probar el reconocimiento automático de placas usando imágenes guardadas, sin integrarlo todavía al flujo principal.
+Paso 26: Mejorar historial para indicar si la placa fue automática o manual
 
 ## Flujo futuro esperado
 

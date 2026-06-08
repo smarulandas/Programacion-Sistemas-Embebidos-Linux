@@ -8,6 +8,8 @@ import serial
 
 from camara_usb import capturar_imagen_evento
 
+from lector_placas_auto import detectar_placa_automatica
+
 
 """
 Proyecto: Sistema embebido de portería vehicular
@@ -355,10 +357,24 @@ def procesar_evento_porteria(puerto, datos):
     # En este momento todavía no conocemos la placa, por eso usamos PENDIENTE.
     ruta_imagen = capturar_imagen_evento(evento, "PENDIENTE")
 
-    # Luego se solicita la placa manualmente.
-    placa = solicitar_placa_manual(evento)
+    # Intentar detectar la placa automáticamente desde la imagen capturada.
+    resultado_placa_auto = detectar_placa_automatica(ruta_imagen)
 
-    print(f"[PLACA INGRESADA] {placa}")
+    if resultado_placa_auto["ok"]:
+        placa = resultado_placa_auto["placa"]
+
+        print(f"[PLACA AUTOMATICA] {placa}")
+        print("[INFO] Se usará la placa detectada automáticamente.")
+
+    else:
+        print("[ALERTA] No se pudo detectar la placa automáticamente.")
+        print(f"[ALERTA] Estado lector: {resultado_placa_auto['estado']}")
+        print(f"[ALERTA] Mensaje lector: {resultado_placa_auto['mensaje']}")
+        print("[INFO] Se solicitará la placa manualmente.")
+
+        placa = solicitar_placa_manual(evento)
+
+        print(f"[PLACA INGRESADA] {placa}")
 
     vehiculo = buscar_vehiculo_por_placa(placa)
 

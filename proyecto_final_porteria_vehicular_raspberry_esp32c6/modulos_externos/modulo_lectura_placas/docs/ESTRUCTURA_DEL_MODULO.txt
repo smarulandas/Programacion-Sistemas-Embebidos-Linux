@@ -1,0 +1,34 @@
+modulo_lectura_placas/
+│
+├── modelo/
+│   └── best_plate_yolo11m.pt
+│
+├── src/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── plate_reader.py
+│   ├── plate_detector.py
+│   ├── plate_ocr.py
+│   ├── plate_text_cleaner.py
+│   └── camera_capture.py
+│
+├── tests/
+│   ├── test_sin_camara.py
+│   ├── test_limpiar_texto.py
+│   └── test_desde_imagen.py
+│
+├── examples/
+│   ├── ejemplo_uso_simple.py
+│   ├── ejemplo_integracion_porteria.py
+│   └── ejemplo_camara_usb.py
+│
+├── imagenes_prueba/
+│   └── README.md
+│
+├── docs/
+│   ├── MENSAJE_PARA_WHATSAPP.txt
+│   └── ESTRUCTURA_DEL_MODULO.txt
+│
+├── requirements_vision.txt
+├── README_PARA_TU_COMPANERO.md
+└── NOTAS_DE_INTEGRACION.md

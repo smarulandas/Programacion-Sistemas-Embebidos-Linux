@@ -1,0 +1,12 @@
+Te envío el módulo de lectura automática de placas separado del proyecto principal.
+
+La función principal es:
+
+from src.plate_reader import leer_placa_desde_imagen
+
+Devuelve un diccionario con estado, placa, confianza y mensaje. Si estado == "OK", se usa resultado["placa"] para compararla con la base de datos SQLite del parqueadero.
+
+Primero recomiendo probarlo con una imagen guardada usando:
+python tests/test_desde_imagen.py imagenes_prueba/foto_carro.jpg
+
+Después se puede conectar con cámara USB y finalmente con el main.py del proyecto de portería. Dejé README y notas de integración dentro del ZIP.
