@@ -316,12 +316,14 @@ static bool leer_linea_uart(char *salida, size_t max_len, int timeout_total_ms)
  * Espera una respuesta completa de la Raspberry.
  *
  * La respuesta debe llegar como una línea terminada en '\n'.
+ * Se deja un tiempo largo porque la Raspberry puede tardar
+ * mientras captura imagen, ejecuta YOLO/EasyOCR o espera placa manual.
  */
 static bool esperar_respuesta_raspberry(void)
 {
     char buffer[UART_RX_BUFFER_SIZE];
 
-    bool recibio = leer_linea_uart(buffer, sizeof(buffer), 30000);
+    bool recibio = leer_linea_uart(buffer, sizeof(buffer), 120000);
 
     if (recibio) {
         procesar_respuesta(buffer);
