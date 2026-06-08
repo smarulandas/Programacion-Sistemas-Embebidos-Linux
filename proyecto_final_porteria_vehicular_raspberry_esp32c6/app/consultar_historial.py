@@ -72,6 +72,7 @@ def imprimir_evento(fila):
     Imprime un evento con formato legible.
 
     En el Paso 22 también muestra la imagen asociada al evento.
+    En el Paso 26 también muestra si la placa fue automática o manual.
     """
 
     print("-" * 80)
@@ -89,6 +90,15 @@ def imprimir_evento(fila):
             print("Imagen: SIN_CAMARA")
         else:
             print(f"Imagen: {imagen}")
+
+    if "placa_origen" in fila.keys():
+        placa_origen = fila["placa_origen"] or "SIN_REGISTRO"
+        confianza_deteccion = fila["confianza_deteccion"] or 0.0
+        confianza_ocr = fila["confianza_ocr"] or 0.0
+
+        print(f"Origen placa: {placa_origen}")
+        print(f"Confianza YOLO: {confianza_deteccion:.4f}")
+        print(f"Confianza OCR: {confianza_ocr:.4f}")
 
     if "nombre" in fila.keys() and fila["nombre"] is not None:
         print(f"Persona: {fila['nombre']}")
@@ -127,6 +137,9 @@ def consultar_ultimos_eventos():
             e.detalle,
             e.imagen,
             p.nombre,
+            e.placa_origen,
+            e.confianza_deteccion,
+            e.confianza_ocr,
             p.documento,
             p.celular,
             p.tipo_persona
@@ -182,6 +195,9 @@ def consultar_eventos_por_placa():
             e.detalle,
             e.imagen,
             p.nombre,
+            e.placa_origen,
+            e.confianza_deteccion,
+            e.confianza_ocr,
             p.documento,
             p.celular,
             p.tipo_persona
@@ -285,6 +301,9 @@ def consultar_eventos_con_imagen():
             e.detalle,
             e.imagen,
             p.nombre,
+            e.placa_origen,
+            e.confianza_deteccion,
+            e.confianza_ocr,
             p.documento,
             p.celular,
             p.tipo_persona
@@ -328,6 +347,9 @@ def consultar_alertas():
             e.detalle,
             e.imagen,
             p.nombre,
+            e.placa_origen,
+            e.confianza_deteccion,
+            e.confianza_ocr,
             p.documento,
             p.celular,
             p.tipo_persona

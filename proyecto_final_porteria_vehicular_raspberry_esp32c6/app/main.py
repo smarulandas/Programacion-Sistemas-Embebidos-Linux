@@ -213,13 +213,30 @@ def marcar_vehiculo_fuera(placa):
     conexion.close()
 
 
-def registrar_evento(evento, placa, estado, contador, origen, detalle="", imagen="SIN_CAMARA", id_persona=None):
+def registrar_evento(
+    evento,
+    placa,
+    estado,
+    contador,
+    origen,
+    detalle="",
+    imagen="SIN_CAMARA",
+    id_persona=None,
+    placa_origen="SIN_REGISTRO",
+    confianza_deteccion=0.0,
+    confianza_ocr=0.0
+):
     """
     Guarda un evento de entrada o salida en la tabla eventos.
 
-    En el Paso 16 también guardamos id_persona cuando la placa
-    está asociada a una persona.
+    También guarda:
+    - id_persona si la placa está asociada a una persona.
+    - placa_origen: AUTOMATICA, MANUAL o SIN_REGISTRO.
+    - confianza_deteccion: confianza YOLO.
+    - confianza_ocr: confianza OCR.
     """
+
+    fecha_hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conexion = conectar_bd()
     cursor = conexion.cursor()
@@ -234,11 +251,14 @@ def registrar_evento(evento, placa, estado, contador, origen, detalle="", imagen
             origen,
             detalle,
             imagen,
-            id_persona
+            id_persona,
+            placa_origen,
+            confianza_deteccion,
+            confianza_ocr
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        fecha_hora,
         evento,
         placa,
         estado,
@@ -246,7 +266,10 @@ def registrar_evento(evento, placa, estado, contador, origen, detalle="", imagen
         origen,
         detalle,
         imagen,
-        id_persona
+        id_persona,
+        placa_origen,
+        confianza_deteccion,
+        confianza_ocr
     ))
 
     conexion.commit()
@@ -335,7 +358,10 @@ def procesar_evento_porteria(puerto, datos):
     """
     Procesa un evento de portería recibido desde el ESP32-C6.
 
-    Lógica Paso 16:
+    Lógica:
+    - Captura imagen del evento.
+    - Intenta leer la placa automáticamente.
+    - Si falla, solicita placa manual.
     - ENTRADA solo se autoriza si el vehículo está registrado y está FUERA.
     - SALIDA solo se autoriza si el vehículo está registrado y está DENTRO.
     """
@@ -362,6 +388,9 @@ def procesar_evento_porteria(puerto, datos):
 
     if resultado_placa_auto["ok"]:
         placa = resultado_placa_auto["placa"]
+        placa_origen = "AUTOMATICA"
+        confianza_deteccion = resultado_placa_auto.get("confianza_deteccion", 0.0)
+        confianza_ocr = resultado_placa_auto.get("confianza_ocr", 0.0)
 
         print(f"[PLACA AUTOMATICA] {placa}")
         print("[INFO] Se usará la placa detectada automáticamente.")
@@ -373,6 +402,9 @@ def procesar_evento_porteria(puerto, datos):
         print("[INFO] Se solicitará la placa manualmente.")
 
         placa = solicitar_placa_manual(evento)
+        placa_origen = "MANUAL"
+        confianza_deteccion = resultado_placa_auto.get("confianza_deteccion", 0.0)
+        confianza_ocr = resultado_placa_auto.get("confianza_ocr", 0.0)
 
         print(f"[PLACA INGRESADA] {placa}")
 
@@ -402,7 +434,10 @@ def procesar_evento_porteria(puerto, datos):
             origen=origen,
             detalle=detalle,
             imagen=ruta_imagen,
-            id_persona=id_persona
+            id_persona=id_persona,
+            placa_origen=placa_origen,
+            confianza_deteccion=confianza_deteccion,
+            confianza_ocr=confianza_ocr
         )
 
         print(f"[BD] Evento guardado con id_evento={id_evento}")
@@ -446,7 +481,10 @@ def procesar_evento_porteria(puerto, datos):
                 origen=origen,
                 detalle=detalle,
                 imagen=ruta_imagen,
-                id_persona=id_persona
+                id_persona=id_persona,
+                placa_origen=placa_origen,
+                confianza_deteccion=confianza_deteccion,
+                confianza_ocr=confianza_ocr
             )
 
             marcar_vehiculo_dentro(placa, id_evento)
@@ -467,7 +505,10 @@ def procesar_evento_porteria(puerto, datos):
                 origen=origen,
                 detalle=detalle,
                 imagen=ruta_imagen,
-                id_persona=id_persona
+                id_persona=id_persona,
+                placa_origen=placa_origen,
+                confianza_deteccion=confianza_deteccion,
+                confianza_ocr=confianza_ocr
             )
 
             print(f"[BD] Evento guardado con id_evento={id_evento}")
@@ -488,7 +529,10 @@ def procesar_evento_porteria(puerto, datos):
                 origen=origen,
                 detalle=detalle,
                 imagen=ruta_imagen,
-                id_persona=id_persona
+                id_persona=id_persona,
+                placa_origen=placa_origen,
+                confianza_deteccion=confianza_deteccion,
+                confianza_ocr=confianza_ocr
             )
 
             marcar_vehiculo_fuera(placa)
@@ -509,7 +553,10 @@ def procesar_evento_porteria(puerto, datos):
                 origen=origen,
                 detalle=detalle,
                 imagen=ruta_imagen,
-                id_persona=id_persona
+                id_persona=id_persona,
+                placa_origen=placa_origen,
+                confianza_deteccion=confianza_deteccion,
+                confianza_ocr=confianza_ocr
             )
 
             print(f"[BD] Evento guardado con id_evento={id_evento}")
@@ -529,7 +576,10 @@ def procesar_evento_porteria(puerto, datos):
             origen=origen,
             detalle=detalle,
             imagen=ruta_imagen,
-            id_persona=id_persona
+            id_persona=id_persona,
+            placa_origen=placa_origen,
+            confianza_deteccion=confianza_deteccion,
+            confianza_ocr=confianza_ocr
         )
 
         print(f"[BD] Evento guardado con id_evento={id_evento}")
