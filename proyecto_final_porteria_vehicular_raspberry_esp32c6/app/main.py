@@ -354,6 +354,68 @@ def solicitar_placa_manual(evento):
 
         print("[ERROR] La placa no puede estar vacía.")
 
+def renombrar_imagen_con_placa(ruta_imagen, evento, placa):
+    """
+    Renombra la imagen capturada del evento usando la placa final.
+
+    Ejemplo:
+    imagenes/eventos/evento_ENTRADA_PENDIENTE_2026_06_07_21_20_35.jpg
+
+    pasa a:
+
+    imagenes/eventos/evento_ENTRADA_AAA123_2026_06_07_21_20_35.jpg
+    """
+
+    if ruta_imagen is None:
+        return "SIN_CAMARA"
+
+    if ruta_imagen == "" or ruta_imagen == "SIN_CAMARA":
+        return ruta_imagen
+
+    ruta_original = Path(ruta_imagen)
+
+    if ruta_original.is_absolute():
+        ruta_absoluta = ruta_original
+    else:
+        ruta_absoluta = BASE_DIR / ruta_original
+
+    if not ruta_absoluta.exists():
+        print(f"[CAMARA] No se pudo renombrar la imagen porque no existe: {ruta_absoluta}")
+        return str(ruta_imagen)
+
+    nombre_original = ruta_absoluta.name
+
+    marcador = f"evento_{evento}_PENDIENTE_"
+
+    if nombre_original.startswith(marcador):
+        fecha_texto = nombre_original.replace(marcador, "").replace(".jpg", "")
+    else:
+        fecha_texto = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+
+    placa_limpia = limpiar_placa(placa)
+
+    nuevo_nombre = f"evento_{evento}_{placa_limpia}_{fecha_texto}.jpg"
+    nueva_ruta_absoluta = ruta_absoluta.parent / nuevo_nombre
+
+    contador_nombre = 1
+
+    while nueva_ruta_absoluta.exists():
+        nuevo_nombre = f"evento_{evento}_{placa_limpia}_{fecha_texto}_{contador_nombre}.jpg"
+        nueva_ruta_absoluta = ruta_absoluta.parent / nuevo_nombre
+        contador_nombre += 1
+
+    ruta_absoluta.rename(nueva_ruta_absoluta)
+
+    try:
+        nueva_ruta_relativa = nueva_ruta_absoluta.relative_to(BASE_DIR)
+        nueva_ruta_final = str(nueva_ruta_relativa)
+    except ValueError:
+        nueva_ruta_final = str(nueva_ruta_absoluta)
+
+    print(f"[CAMARA] Imagen renombrada: {nueva_ruta_final}")
+
+    return nueva_ruta_final
+
 def procesar_evento_porteria(puerto, datos):
     """
     Procesa un evento de portería recibido desde el ESP32-C6.
@@ -408,6 +470,7 @@ def procesar_evento_porteria(puerto, datos):
 
         print(f"[PLACA INGRESADA] {placa}")
 
+    ruta_imagen = renombrar_imagen_con_placa(ruta_imagen, evento, placa)
     vehiculo = buscar_vehiculo_por_placa(placa)
 
     # Caso 1: la placa no existe o está inactiva
