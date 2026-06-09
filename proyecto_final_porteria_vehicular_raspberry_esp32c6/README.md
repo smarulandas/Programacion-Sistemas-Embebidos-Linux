@@ -1,344 +1,250 @@
-# Proyecto final: Sistema de portería vehicular
+# Sistema de Portería Vehicular con Raspberry Pi 400, ESP32-C6 y Reconocimiento de Placas
 
-## Descripción
+## 1. Descripción general
 
-Sistema embebido de portería vehicular desarrollado con una **Raspberry Pi 400 con Linux** y un **ESP32-C6 programado con ESP-IDF**.
+Este proyecto implementa un sistema embebido de portería vehicular usando una Raspberry Pi 400 con Linux, un microcontrolador ESP32-C6, una cámara USB, una base de datos SQLite y un módulo de reconocimiento automático de placas.
 
-El sistema permite registrar personas, asociarlas a vehículos, validar placas, controlar eventos de entrada y salida, guardar historial en una base de datos SQLite, controlar si un vehículo está actualmente **DENTRO** o **FUERA** del parqueadero y capturar imágenes con una cámara USB asociadas a cada evento.
+El sistema permite registrar eventos de entrada y salida de vehículos, capturar una imagen del evento, intentar reconocer automáticamente la placa mediante YOLO y EasyOCR, validar la placa contra una base de datos local y responder al ESP32-C6 para indicar si el acceso fue autorizado o no autorizado.
 
-## Componentes principales
+Además, el sistema incluye un respaldo manual: si el reconocimiento automático falla, el operador puede ingresar la placa manualmente. También permite registrar una persona y un vehículo cuando una placa nueva intenta ingresar por primera vez.
 
-* Raspberry Pi 400 con Linux.
-* ESP32-C6.
-* Cámara USB Logitech 720p.
-* Botones físicos para ENTRADA y SALIDA.
-* LED RGB del ESP32-C6 como indicador visual.
-* Base de datos SQLite.
-* Comunicación serial USB entre ESP32-C6 y Raspberry Pi.
-* Python para la lógica principal en la Raspberry Pi.
-* ESP-IDF para el firmware del ESP32-C6.
+---
 
-## Funcionalidades implementadas
+## 2. Componentes utilizados
 
-### ESP32-C6
+### Hardware
 
-* Lectura de botones físicos de ENTRADA y SALIDA.
-* Envío de eventos en formato JSON hacia la Raspberry Pi.
-* Recepción de respuestas desde la Raspberry Pi.
-* Indicador RGB para mostrar estados del sistema.
-* Comunicación serial por USB.
+* Raspberry Pi 400 con Linux
+* ESP32-C6
+* Cámara USB Logitech 720p
+* LED RGB o indicadores visuales conectados al ESP32-C6
+* Botones físicos para eventos de ENTRADA y SALIDA
+* Cable USB para comunicación serial entre Raspberry Pi y ESP32-C6
 
-### Raspberry Pi
+### Software
 
-* Recepción de eventos por puerto serial.
-* Captura automática de imagen al recibir un evento de ENTRADA o SALIDA.
-* Solicitud manual de placa.
-* Validación de placa en SQLite.
-* Registro de personas.
-* Registro de vehículos.
-* Asociación persona ↔ vehículo.
-* Registro de eventos.
-* Control de estado DENTRO/FUERA.
-* Alertas de entrada duplicada.
-* Alertas de salida sin entrada activa.
-* Consulta de historial.
-* Consulta de eventos con imagen asociada.
-* Menú principal unificado.
+* Python 3
+* SQLite
+* OpenCV
+* PySerial
+* YOLO / Ultralytics
+* EasyOCR
+* ESP-IDF
+* Visual Studio Code con conexión SSH a la Raspberry Pi
 
-- Reconocimiento automático de placas desde imagen capturada.
-- Detección de placa usando modelo YOLO.
-- Lectura OCR de placa usando EasyOCR.
-- Limpieza del texto detectado para comparación con SQLite.
-- Respaldo manual si la placa no se detecta automáticamente.
+---
 
-## Estructura general del proyecto
+## 3. Funcionalidades principales
+
+El sistema permite:
+
+* Recibir eventos físicos desde el ESP32-C6.
+* Diferenciar eventos de ENTRADA y SALIDA.
+* Capturar una imagen del vehículo con cámara USB.
+* Detectar placas automáticamente mediante un modelo YOLO.
+* Leer el texto de la placa con EasyOCR.
+* Solicitar placa manual si el reconocimiento automático falla.
+* Registrar eventos en una base de datos SQLite.
+* Guardar imagen asociada a cada evento.
+* Renombrar la imagen usando la placa final detectada o ingresada.
+* Consultar historial de eventos.
+* Consultar vehículos actualmente dentro o fuera.
+* Registrar personas y vehículos.
+* Autorizar entrada si el vehículo está registrado y se encuentra fuera.
+* Autorizar salida si el vehículo está registrado y se encuentra dentro.
+* Registrar una placa nueva durante un evento de ENTRADA.
+* Bloquear una SALIDA si la placa no está registrada.
+
+---
+
+## 4. Estructura general del proyecto
 
 ```text
-proyecto_final_porteria_vehicular_raspberry_esp32c6/
+proyecto_porteria/
 ├── app/
 │   ├── main.py
-│   ├── menu_principal.py
-│   ├── gestionar_personas_vehiculos.py
+│   ├── menu_pruebas_sistema.py
 │   ├── consultar_historial.py
+│   ├── gestionar_personas_vehiculos.py
 │   ├── camara_usb.py
-│   ├── probar_camara_evento.py
+│   ├── lector_placas_auto.py
 │   ├── inicializar_bd.py
-│   ├── migrar_bd_personas.py
 │   ├── migrar_bd_estado.py
-│   ├── leer_esp32_json.py
-│   ├── responder_esp32_json.py
-│   ├── listar_puertos.py
-│   └── prueba_entorno.py
+│   ├── migrar_bd_personas.py
+│   └── migrar_bd_origen_placa.py
 │
 ├── data/
 │   └── porteria.db
 │
 ├── firmware_esp32/
 │   └── porteria_esp32c6/
-│       ├── main/
-│       │   ├── main.c
-│       │   ├── CMakeLists.txt
-│       │   └── idf_component.yml
-│       ├── CMakeLists.txt
-│       └── sdkconfig
+│       └── main/
+│           └── main.c
 │
 ├── imagenes/
 │   ├── eventos/
 │   └── pruebas_camara/
 │
-├── logs/
-├── docs/
-├── tests/
-└── requirements.txt
+├── modulos_externos/
+│   └── modulo_lectura_placas/
+│
+└── README.md
 ```
 
-> Nota: la base de datos, las imágenes reales y archivos generados durante ejecución no se suben al repositorio cuando están excluidos por `.gitignore`.
+---
 
-## Comando principal del sistema
+## 5. Activar el entorno virtual
 
-Para ejecutar el sistema desde la Raspberry Pi:
-
-```bash
-cd ~/proyecto_porteria
-source .venv/bin/activate
-python app/menu_principal.py
-```
-
-Este comando abre el menú principal del proyecto.
-
-## Menú principal
-
-Al ejecutar:
-
-```bash
-python app/menu_principal.py
-```
-
-aparece un menú como este:
-
-```text
-SISTEMA DE PORTERÍA VEHICULAR - MENÚ PRINCIPAL
-
-1. Iniciar sistema de portería
-2. Gestionar personas y vehículos
-3. Consultar historial y estados
-4. Verificar archivos principales
-5. Salir
-```
-
-### Opción 1: Iniciar sistema de portería
-
-Ejecuta el sistema principal de control de entrada y salida.
-
-Archivo usado:
-
-```bash
-app/main.py
-```
-
-Permite:
-
-* Escuchar eventos enviados por el ESP32-C6.
-* Detectar si se presionó ENTRADA o SALIDA.
-* Capturar una imagen con la cámara USB.
-* Solicitar placa manualmente.
-* Validar la placa en la base de datos.
-* Controlar si el vehículo está DENTRO o FUERA.
-* Guardar el evento en SQLite.
-* Enviar respuesta al ESP32-C6.
-
-También se puede ejecutar directamente con:
-
-```bash
-python app/main.py
-```
-
-### Opción 2: Gestionar personas y vehículos
-
-Ejecuta el gestor de personas y vehículos.
-
-Archivo usado:
-
-```bash
-app/gestionar_personas_vehiculos.py
-```
-
-Permite:
-
-* Registrar una persona.
-* Registrar un vehículo.
-* Asociar una persona con un vehículo.
-* Listar personas con sus vehículos.
-* Buscar vehículos por placa.
-
-También se puede ejecutar directamente con:
-
-```bash
-python app/gestionar_personas_vehiculos.py
-```
-
-### Opción 3: Consultar historial y estados
-
-Ejecuta el módulo de consulta de historial.
-
-Archivo usado:
-
-```bash
-app/consultar_historial.py
-```
-
-Permite consultar:
-
-* Últimos eventos registrados.
-* Eventos por placa.
-* Vehículos actualmente DENTRO.
-* Vehículos actualmente FUERA.
-* Alertas registradas.
-* Eventos con imagen asociada.
-* Resumen general del sistema.
-
-También se puede ejecutar directamente con:
-
-```bash
-python app/consultar_historial.py
-```
-
-### Opción 4: Verificar archivos principales
-
-Revisa que existan los archivos principales del proyecto:
-
-* Sistema de portería.
-* Gestor de personas y vehículos.
-* Consulta de historial.
-* Base de datos SQLite.
-
-Esta opción sirve para confirmar rápidamente que la estructura principal del proyecto está completa.
-
-### Opción 5: Salir
-
-Cierra el menú principal.
-
-## Comandos útiles
-
-### Activar entorno virtual
+Antes de ejecutar el sistema, se debe activar el entorno virtual de Python:
 
 ```bash
 cd ~/proyecto_porteria
 source .venv/bin/activate
 ```
 
-### Ejecutar menú principal
+La terminal debe mostrar `(.venv)` al inicio. Esto es importante porque el reconocimiento de placas necesita librerías como OpenCV, Torch, Ultralytics y EasyOCR.
+
+---
+
+## 6. Ejecutar el menú principal de pruebas
+
+El proyecto se puede ejecutar desde un menú central:
 
 ```bash
-python app/menu_principal.py
+python app/menu_pruebas_sistema.py
 ```
 
-### Ejecutar sistema de portería directamente
-
-```bash
-python app/main.py
-```
-
-### Gestionar personas y vehículos
-
-```bash
-python app/gestionar_personas_vehiculos.py
-```
-
-### Consultar historial
-
-```bash
-python app/consultar_historial.py
-```
-
-### Probar cámara USB
-
-```bash
-python app/probar_camara_evento.py
-```
-
-### Ver puertos seriales disponibles
-
-```bash
-python app/listar_puertos.py
-```
-
-### Abrir base de datos SQLite manualmente
-
-```bash
-sqlite3 data/porteria.db
-```
-
-Dentro de SQLite, algunos comandos útiles son:
-
-```sql
-.tables
-```
-
-```sql
-SELECT * FROM vehiculos;
-```
-
-```sql
-SELECT * FROM personas;
-```
-
-```sql
-SELECT * FROM estado_vehiculos;
-```
-
-```sql
-SELECT id_evento, fecha_hora, evento, placa, estado, imagen
-FROM eventos
-ORDER BY id_evento DESC
-LIMIT 10;
-```
-
-Para salir de SQLite:
-
-```sql
-.exit
-```
-
-## Cámara USB
-
-La cámara USB Logitech 720p fue detectada en Linux como cámara UVC.
-
-Dispositivo usado:
+El menú muestra:
 
 ```text
-/dev/video0
+1. Ejecutar sistema completo de portería
+2. Consultar historial detallado
+3. Probar cámara USB
+4. Probar reconocimiento automático de placas
+5. Ver últimos eventos guardados
+6. Gestionar personas y vehículos
+0. Salir
 ```
 
-Resolución recomendada:
+---
+
+## 7. Opción 1: Ejecutar sistema completo de portería
+
+Esta es la opción principal del proyecto.
+
+Flujo general:
 
 ```text
-1280x720
+ESP32-C6 detecta botón de ENTRADA o SALIDA
+↓
+Envía evento por serial a la Raspberry Pi
+↓
+Raspberry captura una imagen con la cámara USB
+↓
+Se intenta detectar y leer la placa automáticamente
+↓
+Si falla el OCR, se solicita la placa manualmente
+↓
+Se consulta la base de datos SQLite
+↓
+Se guarda el evento con imagen, placa, estado y origen de placa
+↓
+Se responde al ESP32-C6 con AUTORIZADO o NO_AUTORIZADO
 ```
 
-Comando base usado para captura:
+Para ejecutar:
 
 ```bash
-fswebcam -d /dev/video0 -r 1280x720 --skip 20 --delay 2 --no-banner archivo.jpg
+python app/menu_pruebas_sistema.py
 ```
 
-El sistema usa esta configuración para evitar capturas corruptas al inicio y permitir que la cámara estabilice la imagen.
-
-Las imágenes de eventos se guardan en:
+Seleccionar:
 
 ```text
-imagenes/eventos/
+1
 ```
 
-Ejemplo de nombre de imagen:
+---
+
+## 8. Flujo de ENTRADA
+
+### Caso 1: placa registrada y vehículo fuera
+
+Si la placa está registrada y el vehículo aparece como `FUERA`, el sistema autoriza la entrada:
 
 ```text
-evento_ENTRADA_BBB111_2026_06_05_20_15_07.jpg
+AUTORIZADO:ENTRADA:PLACA
 ```
 
-## Base de datos
+Luego actualiza el estado del vehículo a:
 
-La base de datos usada es:
+```text
+DENTRO
+```
+
+### Caso 2: placa registrada y vehículo ya dentro
+
+Si el vehículo ya aparece como `DENTRO`, el sistema no autoriza una entrada duplicada.
+
+### Caso 3: placa no registrada
+
+Si la placa no está registrada y el evento es de ENTRADA, el sistema pregunta:
+
+```text
+¿Desea registrar esta persona y vehículo ahora? [s/n]
+```
+
+Si el operador responde `s`, el sistema solicita:
+
+```text
+Documento o identificación
+Nombre completo
+Celular
+Tipo de persona
+Tipo de vehículo
+Color del vehículo
+```
+
+Después registra la persona, registra el vehículo, crea su estado inicial como `FUERA`, revalida la placa y autoriza la entrada si corresponde.
+
+---
+
+## 9. Flujo de SALIDA
+
+### Caso 1: placa registrada y vehículo dentro
+
+Si la placa está registrada y el vehículo aparece como `DENTRO`, el sistema autoriza la salida:
+
+```text
+AUTORIZADO:SALIDA:PLACA
+```
+
+Luego actualiza el estado del vehículo a:
+
+```text
+FUERA
+```
+
+### Caso 2: placa registrada pero vehículo fuera
+
+Si el vehículo aparece como `FUERA`, el sistema no autoriza la salida porque no existe una entrada activa.
+
+### Caso 3: placa no registrada
+
+Si se presiona SALIDA y la placa no está registrada, el sistema no permite registrar el vehículo en ese momento. Muestra una alerta:
+
+```text
+No se puede registrar una SALIDA para una placa no registrada.
+Para salir, el vehículo debe estar registrado y tener una entrada activa.
+```
+
+El evento queda guardado como `NO_AUTORIZADO`.
+
+---
+
+## 10. Base de datos SQLite
+
+La base de datos principal está en:
 
 ```text
 data/porteria.db
@@ -349,174 +255,296 @@ Tablas principales:
 ```text
 personas
 vehiculos
-eventos
 estado_vehiculos
+eventos
 ```
 
 ### Tabla personas
 
-Guarda información de las personas registradas.
+Guarda información de las personas asociadas a vehículos.
 
-Ejemplos de datos:
+Campos principales:
 
-* Documento.
-* Nombre.
-* Celular.
-* Tipo de persona.
+```text
+id_persona
+documento
+nombre
+celular
+tipo_persona
+fecha_registro
+activo
+```
 
 ### Tabla vehiculos
 
-Guarda información de vehículos registrados.
+Guarda información de los vehículos registrados.
 
-Ejemplos de datos:
+Campos principales:
 
-* Placa.
-* Tipo de vehículo.
-* Color.
-* Estado activo/inactivo.
-* Persona asociada.
+```text
+placa
+tipo_vehiculo
+color
+nombre_conductor
+celular
+fecha_registro
+activo
+id_persona
+```
+
+### Tabla estado_vehiculos
+
+Guarda si un vehículo está actualmente dentro o fuera.
+
+Campos principales:
+
+```text
+placa
+estado_actual
+id_evento_entrada_actual
+fecha_hora_entrada
+ultima_actualizacion
+```
 
 ### Tabla eventos
 
 Guarda cada evento de entrada o salida.
 
-Ejemplos de datos:
-
-* Fecha y hora.
-* Tipo de evento.
-* Placa.
-* Estado de autorización.
-* Detalle.
-* Imagen asociada.
-* Persona asociada.
-
-### Tabla estado_vehiculos
-
-Controla si un vehículo está actualmente:
+Campos principales:
 
 ```text
-DENTRO
-FUERA
+id_evento
+fecha_hora
+evento
+placa
+estado
+contador_esp32
+origen
+detalle
+imagen
+id_persona
+placa_origen
+confianza_deteccion
+confianza_ocr
 ```
 
-Esta tabla permite evitar entradas duplicadas y salidas sin entrada activa.
+---
 
-## Flujo actual del sistema
+## 11. Consultar últimos eventos
 
-```text
-Botón ENTRADA/SALIDA en ESP32-C6
-↓
-ESP32-C6 envía evento JSON a Raspberry Pi
-↓
-Raspberry Pi recibe el evento
-↓
-Raspberry Pi captura imagen automáticamente
-↓
-Raspberry Pi intenta detectar y leer la placa automáticamente
-↓
-Si detecta placa:
-    usa la placa automática
-Si no detecta placa:
-    solicita ingreso manual
-↓
-Raspberry Pi valida la placa final en SQLite
-↓
-Raspberry Pi guarda evento e imagen
-↓
-Raspberry Pi responde al ESP32-C6
-↓
-ESP32-C6 muestra el estado con LED RGB
-
-## Lógica DENTRO/FUERA
-
-### Entrada válida
+Desde el menú:
 
 ```text
-Vehículo registrado + estado FUERA
-→ AUTORIZADO
-→ estado cambia a DENTRO
+5. Ver últimos eventos guardados
 ```
 
-### Entrada duplicada
+También se puede consultar directamente con SQLite:
 
-```text
-Vehículo registrado + estado DENTRO
-→ NO_AUTORIZADO
-→ alerta de entrada duplicada
+```bash
+sqlite3 data/porteria.db "SELECT id_evento, evento, placa, estado, placa_origen, imagen FROM eventos ORDER BY id_evento DESC LIMIT 5;"
 ```
 
-### Salida válida
+---
+
+## 12. Consultar historial detallado
+
+Desde el menú:
 
 ```text
-Vehículo registrado + estado DENTRO
-→ AUTORIZADO
-→ estado cambia a FUERA
+2. Consultar historial detallado
 ```
 
-### Salida sin entrada activa
+Este módulo permite:
 
 ```text
-Vehículo registrado + estado FUERA
-→ NO_AUTORIZADO
-→ alerta de salida sin entrada activa
+- Ver últimos eventos
+- Buscar eventos por placa
+- Ver vehículos actualmente DENTRO
+- Ver vehículos actualmente FUERA
+- Ver alertas
+- Ver eventos con imagen
+- Ver resumen general
 ```
 
-### Placa no registrada
+---
+
+## 13. Registrar personas y vehículos manualmente
+
+Desde el menú:
 
 ```text
-Placa no existe o está inactiva
-→ NO_AUTORIZADO
+6. Gestionar personas y vehículos
 ```
 
-## Estado actual del desarrollo
-
-Último paso completado:
+Opciones disponibles:
 
 ```text
-Paso 24: Reconocimiento automático de placas integrado al flujo principal
+1. Registrar persona y vehículo
+2. Listar personas con vehículos
+3. Buscar vehículo por placa
+4. Salir
 ```
 
-Funcionalidades completadas hasta este punto:
+Esta opción sirve para registrar previamente placas autorizadas.
 
-* Comunicación ESP32-C6 ↔ Raspberry Pi.
-* Botones físicos de ENTRADA y SALIDA.
-* LED RGB como indicador. 
-* Base de datos SQLite.
-* Registro de personas.
-* Registro de vehículos.
-* Asociación persona ↔ vehículo.
-* Validación de placas.
-* Control DENTRO/FUERA.
-* Captura automática con cámara USB.
-* Guardado de ruta de imagen en SQLite.
-* Consulta de historial con imágenes.
-* Menú principal unificado.
+---
 
+## 14. Probar cámara USB
 
-## Próximo desarrollo
+Desde el menú:
 
 ```text
-Paso 26: Mejorar historial para indicar si la placa fue automática o manual
-
-## Flujo futuro esperado
-
-```text
-Botón ENTRADA/SALIDA
-↓
-Captura automática de imagen
-↓
-Modelo intenta detectar placa
-↓
-Si detecta placa:
-    valida automáticamente
-Si no detecta placa:
-    solicita ingreso manual
-↓
-Guarda evento con placa final e imagen
+3. Probar cámara USB
 ```
 
-Más adelante se podrá agregar una opción para que el guarda edite la placa si el sistema la detecta incorrectamente.
+Las imágenes de prueba se guardan en:
 
-## Autor
+```text
+imagenes/pruebas_camara/
+```
 
-Proyecto desarrollado como trabajo final para la materia **Programación de Sistemas Embebidos Linux**.
+Las imágenes de eventos reales se guardan en:
+
+```text
+imagenes/eventos/
+```
+
+---
+
+## 15. Probar reconocimiento automático de placas
+
+Desde el menú:
+
+```text
+4. Probar reconocimiento automático de placas
+```
+
+El sistema toma una imagen existente y ejecuta el módulo de lectura automática.
+
+El resultado puede ser:
+
+```text
+OK
+SIN_PLACA
+OCR_FALLIDO
+ERROR
+```
+
+Si el modelo falla durante el sistema completo, se solicita placa manual.
+
+---
+
+## 16. Firmware del ESP32-C6
+
+El firmware se encuentra en:
+
+```text
+firmware_esp32/porteria_esp32c6/
+```
+
+Para compilar:
+
+```bash
+cd ~/proyecto_porteria/firmware_esp32/porteria_esp32c6
+. ~/esp/esp-idf/export.sh
+idf.py build
+```
+
+Para flashear:
+
+```bash
+idf.py -p /dev/ttyACM0 flash
+```
+
+No se recomienda usar `idf.py monitor` mientras se ejecuta `python app/main.py`, porque ambos intentan usar el mismo puerto serial.
+
+---
+
+## 17. Comunicación serial
+
+La Raspberry Pi se comunica con el ESP32-C6 usando:
+
+```text
+Puerto: /dev/ttyACM0
+Baudrate: 115200
+```
+
+El ESP32-C6 envía eventos en formato JSON, por ejemplo:
+
+```json
+{
+  "origen": "ESP32C6",
+  "tipo": "EVENTO_PORTERIA",
+  "evento": "ENTRADA",
+  "placa": "PENDIENTE_MANUAL",
+  "contador": 1
+}
+```
+
+La Raspberry responde con mensajes como:
+
+```text
+AUTORIZADO:ENTRADA:ABC123
+NO_AUTORIZADO:SALIDA:XYZ999
+```
+
+---
+
+## 18. Consideraciones importantes
+
+* Siempre activar el entorno virtual antes de ejecutar el sistema.
+* No abrir `idf.py monitor` al mismo tiempo que el programa Python.
+* Si el reconocimiento automático falla, usar ingreso manual de placa.
+* El modelo puede fallar si la placa está en una pantalla, con mucho brillo, inclinada, borrosa o muy lejos.
+* La entrada de vehículos no registrados permite registro inmediato.
+* La salida de vehículos no registrados no permite registro y queda como alerta.
+* Si se tarda mucho registrando datos, el ESP32 puede mostrar un aviso de espera agotada, aunque la Raspberry haya guardado correctamente el evento.
+
+---
+
+## 19. Ejecución recomendada para demostración
+
+```bash
+cd ~/proyecto_porteria
+source .venv/bin/activate
+python app/menu_pruebas_sistema.py
+```
+
+Luego seleccionar:
+
+```text
+1. Ejecutar sistema completo de portería
+```
+
+Demostración sugerida:
+
+```text
+1. Presionar botón ENTRADA.
+2. Mostrar captura de imagen.
+3. Mostrar lectura automática o ingreso manual.
+4. Mostrar autorización.
+5. Consultar últimos eventos guardados.
+6. Consultar historial detallado.
+7. Mostrar registro de personas y vehículos.
+```
+
+---
+
+## 20. Estado final del proyecto
+
+El sistema integra hardware, software, base de datos, visión artificial y comunicación serial para simular una portería vehicular automatizada.
+
+El proyecto cuenta con:
+
+```text
+- Comunicación ESP32-C6 ↔ Raspberry Pi
+- Captura de imagen por cámara USB
+- Reconocimiento automático de placas
+- Respaldo manual
+- Validación contra SQLite
+- Registro de personas y vehículos
+- Control de estado DENTRO/FUERA
+- Historial de eventos
+- Imágenes asociadas a eventos
+- Menú de pruebas y demostración
+```
