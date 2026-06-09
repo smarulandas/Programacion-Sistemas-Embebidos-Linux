@@ -354,6 +354,212 @@ def solicitar_placa_manual(evento):
 
         print("[ERROR] La placa no puede estar vacía.")
 
+def solicitar_confirmacion(mensaje):
+    """
+    Solicita una respuesta sí/no al usuario.
+    Retorna True para sí y False para no.
+    """
+    while True:
+        respuesta = input(mensaje).strip().lower()
+
+        if respuesta in ("s", "si", "sí"):
+            return True
+
+        if respuesta in ("n", "no"):
+            return False
+
+        print("[ERROR] Responda con s/n.")
+
+
+def solicitar_texto_obligatorio(mensaje):
+    """
+    Solicita un texto obligatorio.
+    No permite valores vacíos.
+    """
+    while True:
+        texto = input(mensaje).strip()
+
+        if texto:
+            return texto
+
+        print("[ERROR] Este campo no puede estar vacío.")
+
+
+def registrar_persona_y_vehiculo_desde_evento(placa):
+    """
+    Registra una persona y un vehículo cuando una placa de ENTRADA
+    no existe en la base de datos.
+
+    Retorna el vehículo registrado si el proceso fue exitoso.
+    Retorna None si el usuario cancela o si ocurre un error.
+    """
+    placa = limpiar_placa(placa)
+
+    print("\n=== Placa no registrada ===")
+    print(f"[INFO] Placa detectada/ingresada: {placa}")
+
+    desea_registrar = solicitar_confirmacion(
+        "¿Desea registrar esta persona y vehículo ahora? [s/n]: "
+    )
+
+    if not desea_registrar:
+        print("[INFO] No se registrará la placa en este momento.")
+        return None
+
+    print("\n=== Registro de persona y vehículo ===")
+
+    documento = solicitar_texto_obligatorio("Documento o identificación: ")
+    nombre = solicitar_texto_obligatorio("Nombre completo: ").upper()
+    celular = solicitar_texto_obligatorio("Celular: ")
+    tipo_persona = solicitar_texto_obligatorio(
+        "Tipo de persona, ejemplo ESTUDIANTE, DOCENTE, VISITANTE: "
+    ).upper()
+
+    tipo_vehiculo = solicitar_texto_obligatorio(
+        "Tipo de vehículo, ejemplo CARRO o MOTO: "
+    ).upper()
+
+    color = solicitar_texto_obligatorio("Color del vehículo: ").upper()
+
+    fecha_registro = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conexion = conectar_bd()
+    cursor = conexion.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT id_persona
+            FROM personas
+            WHERE documento = ?
+        """, (documento,))
+
+        persona = cursor.fetchone()
+
+        if persona is None:
+            cursor.execute("""
+                INSERT INTO personas (
+                    documento,
+                    nombre,
+                    celular,
+                    tipo_persona,
+                    fecha_registro,
+                    activo
+                )
+                VALUES (?, ?, ?, ?, ?, 1)
+            """, (
+                documento,
+                nombre,
+                celular,
+                tipo_persona,
+                fecha_registro
+            ))
+
+            id_persona = cursor.lastrowid
+            print(f"[OK] Persona registrada con id_persona={id_persona}")
+
+        else:
+            id_persona = persona["id_persona"]
+
+            cursor.execute("""
+                UPDATE personas
+                SET nombre = ?,
+                    celular = ?,
+                    tipo_persona = ?,
+                    activo = 1
+                WHERE id_persona = ?
+            """, (
+                nombre,
+                celular,
+                tipo_persona,
+                id_persona
+            ))
+
+            print(f"[OK] Persona actualizada con id_persona={id_persona}")
+
+        cursor.execute("""
+            SELECT placa
+            FROM vehiculos
+            WHERE placa = ?
+        """, (placa,))
+
+        vehiculo = cursor.fetchone()
+
+        if vehiculo is None:
+            cursor.execute("""
+                INSERT INTO vehiculos (
+                    placa,
+                    tipo_vehiculo,
+                    color,
+                    nombre_conductor,
+                    celular,
+                    fecha_registro,
+                    activo,
+                    id_persona
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+            """, (
+                placa,
+                tipo_vehiculo,
+                color,
+                nombre,
+                celular,
+                fecha_registro,
+                id_persona
+            ))
+
+            print(f"[OK] Vehículo registrado y asociado: {placa}")
+
+        else:
+            cursor.execute("""
+                UPDATE vehiculos
+                SET tipo_vehiculo = ?,
+                    color = ?,
+                    nombre_conductor = ?,
+                    celular = ?,
+                    activo = 1,
+                    id_persona = ?
+                WHERE placa = ?
+            """, (
+                tipo_vehiculo,
+                color,
+                nombre,
+                celular,
+                id_persona,
+                placa
+            ))
+
+            print(f"[OK] Vehículo actualizado y asociado: {placa}")
+
+        cursor.execute("""
+            INSERT OR IGNORE INTO estado_vehiculos (
+                placa,
+                estado_actual,
+                id_evento_entrada_actual,
+                fecha_hora_entrada,
+                ultima_actualizacion
+            )
+            VALUES (?, 'FUERA', NULL, NULL, ?)
+        """, (
+            placa,
+            fecha_registro
+        ))
+
+        conexion.commit()
+
+    except sqlite3.Error as error:
+        conexion.rollback()
+        print("[ERROR] No se pudo registrar la persona y el vehículo.")
+        print(f"[DETALLE] {error}")
+        conexion.close()
+        return None
+
+    conexion.close()
+
+    print("[OK] Registro completado.")
+    print("[INFO] Se validará nuevamente la placa registrada.")
+
+    return buscar_vehiculo_por_placa(placa)
+
 def renombrar_imagen_con_placa(ruta_imagen, evento, placa):
     """
     Renombra la imagen capturada del evento usando la placa final.
@@ -471,18 +677,37 @@ def procesar_evento_porteria(puerto, datos):
         print(f"[PLACA INGRESADA] {placa}")
 
     ruta_imagen = renombrar_imagen_con_placa(ruta_imagen, evento, placa)
+
     vehiculo = buscar_vehiculo_por_placa(placa)
 
-    # Caso 1: la placa no existe o está inactiva
+    # Si la placa no existe y el evento es ENTRADA,
+    # se ofrece registrar la persona y el vehículo en ese momento.
+    if vehiculo is None and evento == "ENTRADA":
+        vehiculo_registrado = registrar_persona_y_vehiculo_desde_evento(placa)
+
+        if vehiculo_registrado is not None:
+            vehiculo = vehiculo_registrado
+
+    # Si la placa no existe y el evento es SALIDA,
+    # no se ofrece registro porque no puede salir un vehículo
+    # que no tiene registro previo en la base de datos.
+    elif vehiculo is None and evento == "SALIDA":
+        print("[ALERTA] No se puede registrar una SALIDA para una placa no registrada.")
+        print("[INFO] Para salir, el vehículo debe estar registrado y tener una entrada activa.")
+
+    # Caso 1: la placa no existe, está inactiva o el usuario no quiso registrarla
     if vehiculo is None:
+
         id_persona = None
+        estado = "NO_AUTORIZADO"
 
         if evento == "SALIDA":
-            estado = "NO_AUTORIZADO"
-            detalle = "ALERTA: salida de placa no registrada. Posible error de registro de entrada."
+            detalle = (
+                "ALERTA: no se puede registrar una salida para una placa no registrada. "
+                "Para salir, el vehículo debe estar registrado y tener una entrada activa."
+            )
             respuesta_evento = "ALERTA_SALIDA_NO_REGISTRADA"
         else:
-            estado = "NO_AUTORIZADO"
             detalle = "Placa no registrada o inactiva."
             respuesta_evento = evento
 

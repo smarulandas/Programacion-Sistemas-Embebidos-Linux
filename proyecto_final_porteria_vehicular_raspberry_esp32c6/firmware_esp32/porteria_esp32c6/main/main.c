@@ -323,7 +323,7 @@ static bool esperar_respuesta_raspberry(void)
 {
     char buffer[UART_RX_BUFFER_SIZE];
 
-    bool recibio = leer_linea_uart(buffer, sizeof(buffer), 120000);
+    bool recibio = leer_linea_uart(buffer, sizeof(buffer), 60000);
 
     if (recibio) {
         procesar_respuesta(buffer);

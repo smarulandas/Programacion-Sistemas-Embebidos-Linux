@@ -1,6 +1,9 @@
+import os
+import signal
 import sqlite3
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -23,12 +26,40 @@ def ejecutar_script(ruta_script):
         return
 
     print(f"[INFO] Ejecutando: {ruta_script}")
-    print("[INFO] Para detener, use Ctrl + C si el programa queda esperando eventos.\n")
+    print("[INFO] Para detener el módulo actual y volver al menú, use Ctrl + C.\n")
+
+    proceso = None
 
     try:
-        subprocess.run([sys.executable, str(ruta_script)], cwd=str(BASE_DIR))
+        proceso = subprocess.Popen(
+            [sys.executable, str(ruta_script)],
+            cwd=str(BASE_DIR),
+            preexec_fn=os.setsid
+        )
+
+        proceso.wait()
+
     except KeyboardInterrupt:
-        print("\n[INFO] Ejecución detenida por el usuario.")
+        print("\n[INFO] Cancelación solicitada por el usuario.")
+        print("[INFO] Deteniendo el módulo actual...")
+
+        if proceso is not None and proceso.poll() is None:
+            try:
+                os.killpg(os.getpgid(proceso.pid), signal.SIGINT)
+                time.sleep(1)
+
+                if proceso.poll() is None:
+                    os.killpg(os.getpgid(proceso.pid), signal.SIGTERM)
+                    time.sleep(1)
+
+                if proceso.poll() is None:
+                    os.killpg(os.getpgid(proceso.pid), signal.SIGKILL)
+
+            except ProcessLookupError:
+                pass
+
+        print("[INFO] Módulo detenido.")
+        print("[INFO] Regresando al menú principal...")
 
 def ver_ultimos_eventos():
     print("\n=== Últimos eventos registrados ===")
@@ -152,14 +183,31 @@ def mostrar_menu():
     print("3. Probar cámara USB")
     print("4. Probar reconocimiento automático de placas")
     print("5. Ver últimos eventos guardados")
+    print("6. Gestionar personas y vehículos")
     print("0. Salir")
     print("=" * 70)
 
+def esperar_enter_para_menu():
+    """
+    Espera Enter para volver al menú.
+
+    Si el usuario presiona Ctrl+C en este punto, no se muestra traceback.
+    Simplemente vuelve al menú principal.
+    """
+    try:
+        input("\nPresione Enter para volver al menú...")
+    except KeyboardInterrupt:
+        print("\n[INFO] Volviendo al menú principal...")
 
 def main():
     while True:
         mostrar_menu()
-        opcion = input("Seleccione una opción: ").strip()
+        
+        try:
+            opcion = input("Seleccione una opción: ").strip()
+        except KeyboardInterrupt:
+            print("\n[INFO] Operación cancelada. Volviendo al menú principal...")
+            continue
 
         if opcion == "1":
             ejecutar_script(APP_DIR / "main.py")
@@ -171,13 +219,15 @@ def main():
             probar_lector_placas()
         elif opcion == "5":
             ver_ultimos_eventos()
+        elif opcion == "6":
+            ejecutar_script(APP_DIR / "gestionar_personas_vehiculos.py")
         elif opcion == "0":
             print("[INFO] Saliendo del menú de pruebas.")
             break
         else:
             print("[ERROR] Opción no válida.")
 
-        input("\nPresione Enter para volver al menú...")
+        esperar_enter_para_menu()
 
 
 if __name__ == "__main__":
